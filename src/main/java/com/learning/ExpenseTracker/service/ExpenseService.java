@@ -4,6 +4,10 @@ import com.learning.ExpenseTracker.exception.ExpenseNotFoundException;
 import com.learning.ExpenseTracker.model.Expense;
 import com.learning.ExpenseTracker.repository.ExpenseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -76,6 +80,12 @@ public class ExpenseService {
     }
     public List<Expense> getExpensesOrderByDateAsc(){
         return repo.findByOrderByDateAsc();
+    }
+
+    public Page<Expense>  getExpenses(int page,int size,String sortBy,String direction){
+        Sort sort=direction.equalsIgnoreCase("asc")? Sort.by(sortBy).ascending():Sort.by(sortBy).descending();
+        Pageable pageable= PageRequest.of(page,size,sort);
+        return repo.findAll(pageable);
     }
 
 

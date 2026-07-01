@@ -3,6 +3,7 @@ package com.learning.ExpenseTracker.controller;
 import com.learning.ExpenseTracker.service.ExpenseService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +17,6 @@ public class ExpenseController {
     @Autowired
     private ExpenseService service;
 
-    @GetMapping("/expenses")
-    public ResponseEntity<List<Expense>> getExpenses(){
-        return new ResponseEntity<>(service.getExpenses(), HttpStatus.OK);
-    }
 
     @GetMapping("/expenses/{id}")
     public  ResponseEntity<Expense> getExpenseById(@PathVariable int id){
@@ -123,6 +120,11 @@ public class ExpenseController {
         return new ResponseEntity<>(
                 service.getExpensesOrderByDateAsc(),
                 HttpStatus.OK);
+    }
+
+    @GetMapping("/expenses")
+    public ResponseEntity<Page<Expense>> getExpenses(@RequestParam(defaultValue = "0") int page,@RequestParam(defaultValue = "10")  int size,@RequestParam (defaultValue = "id")String sortBy,@RequestParam(defaultValue = "asc") String direction){
+       return new ResponseEntity<>(service.getExpenses(page,size,sortBy,direction),HttpStatus.OK);
     }
 }
 
