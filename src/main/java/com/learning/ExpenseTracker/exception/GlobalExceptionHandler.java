@@ -14,19 +14,39 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ExpenseNotFoundException.class)
-    public ResponseEntity<String> handleExpenseNotFoundException(ExpenseNotFoundException ex) {
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    public ResponseEntity<String> handleExpenseNotFoundException(
+            ExpenseNotFoundException ex) {
+
+        return new ResponseEntity<>(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, String>> handleMethodArgNotValidException(MethodArgumentNotValidException ex) {
+    public ResponseEntity<Map<String, String>> handleValidationException(
+            MethodArgumentNotValidException ex) {
 
         Map<String, String> errors = new HashMap<>();
 
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-            errors.put(error.getField(), error.getDefaultMessage());
+
+            errors.put(
+                    error.getField(),
+                    error.getDefaultMessage()
+            );
         }
 
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(
+                errors,
+                HttpStatus.BAD_REQUEST);
     }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleGenericException(Exception ex) {
+
+        return new ResponseEntity<>(
+                "Something went wrong. Please try again.",
+                HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
 }

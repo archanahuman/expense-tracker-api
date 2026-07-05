@@ -1,33 +1,34 @@
-package com.learning.ExpenseTracker.model;
+package com.learning.ExpenseTracker.dto;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@Entity
-public class Expense {
+public class ExpenseDTO {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
+    @NotBlank(message = "Title cannot be blank")
     private String title;
 
+    @NotBlank(message = "Category cannot be blank")
     private String category;
 
+    @NotNull(message = "Amount cannot be null")
+    @Positive(message = "Amount must be greater than zero")
     private BigDecimal amount;
 
+    @NotNull(message = "Date cannot be null")
     private LocalDate date;
 
-    public Expense() {
+    public ExpenseDTO() {
     }
 
-    public Expense(int id, String title, String category,
-                   BigDecimal amount, LocalDate date) {
+    public ExpenseDTO(int id, String title, String category,
+                      BigDecimal amount, LocalDate date) {
         this.id = id;
         this.title = title;
         this.category = category;

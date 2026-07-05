@@ -1,13 +1,12 @@
 package com.learning.ExpenseTracker.service;
 
+import com.learning.ExpenseTracker.dto.ExpenseDTO;
 import com.learning.ExpenseTracker.exception.ExpenseNotFoundException;
+import com.learning.ExpenseTracker.mapper.ExpenseMapper;
 import com.learning.ExpenseTracker.model.Expense;
 import com.learning.ExpenseTracker.repository.ExpenseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -20,74 +19,156 @@ public class ExpenseService {
     @Autowired
     private ExpenseRepository repo;
 
-    public List<Expense> getExpenses() {
-        return repo.findAll();
+    @Autowired
+    private ExpenseMapper expenseMapper;
+
+    // Get all expenses
+    public List<ExpenseDTO> getExpenses() {
+
+        List<Expense> expenses = repo.findAll();
+
+        return expenseMapper.toDTOList(expenses);
     }
 
-    public Expense getExpenseById(int id) {
-        return repo.findById(id).orElseThrow(()->new ExpenseNotFoundException("Expense with id "+id+"not found"));
+    // Get expense by id
+    public ExpenseDTO getExpenseById(int id) {
+
+        Expense expense = repo.findById(id)
+                .orElseThrow(() ->
+                        new ExpenseNotFoundException("Expense with id " + id + " not found"));
+
+        return expenseMapper.toDTO(expense);
     }
 
-    public void addExpense(Expense expense) {
+    // Add new expense
+    public void addExpense(ExpenseDTO expenseDTO) {
+
+        Expense expense = expenseMapper.toEntity(expenseDTO);
+
         repo.save(expense);
     }
 
-    public void updateExpense(Expense expense) {
+    // Update expense
+    public void updateExpense(ExpenseDTO expenseDTO) {
+
+        Expense expense = expenseMapper.toEntity(expenseDTO);
+
         repo.save(expense);
     }
 
+    // Delete expense
     public void deleteExpense(int id) {
+
         repo.deleteById(id);
     }
 
-    public List<Expense> getExpensesByCategory(String category){
-        return repo.findByCategory(category);
-    }
-    public List<Expense> getExpenseByTitle(String title){
-        return repo.findByTitle(title);
+    // Find by category
+    public List<ExpenseDTO> getExpensesByCategory(String category) {
+
+        return expenseMapper.toDTOList(
+                repo.findByCategory(category)
+        );
     }
 
+    // Find by title
+    public List<ExpenseDTO> getExpenseByTitle(String title) {
 
-    public List<Expense> getExpenseByAmountGreaterThan(BigDecimal amount){
-        return repo.findByAmountGreaterThan(amount);
+        return expenseMapper.toDTOList(
+                repo.findByTitle(title)
+        );
     }
 
+    // Amount greater than
+    public List<ExpenseDTO> getExpenseByAmountGreaterThan(BigDecimal amount) {
 
-    public List<Expense> getExpenseByDateBetween(LocalDate startDate, LocalDate endDate){
-        return repo.findByDateBetween(startDate,endDate);
-    }
-
-    public List<Expense> getExpenseByTitleContaining(String title){
-        return repo.findByTitleContaining(title);
-    }
-
-    public List<Expense> getExpenseByAmountLessThan(BigDecimal amount){
-        return repo.findByAmountLessThan(amount);
-    }
-    public List<Expense> getExpenseByCategoryIgnoreCase(String category){
-        return repo.findByCategoryIgnoreCase(category);
+        return expenseMapper.toDTOList(
+                repo.findByAmountGreaterThan(amount)
+        );
     }
 
-    public List<Expense> getExpenseByCategoryAndAmountGreaterThan(String category,BigDecimal amount){
-        return repo.findByCategoryAndAmountGreaterThan(category,amount);
+    // Amount less than
+    public List<ExpenseDTO> getExpenseByAmountLessThan(BigDecimal amount) {
+
+        return expenseMapper.toDTOList(
+                repo.findByAmountLessThan(amount)
+        );
     }
 
-    public List<Expense> getExpenseByCategoryOrTitle(String category,String title){
-        return  repo.findByCategoryOrTitle(category,title);
-    }
-    public List<Expense> getExpenseOrderByAmountDesc(){
-        return repo.findByOrderByAmountDesc();
-    }
-    public List<Expense> getExpensesOrderByDateAsc(){
-        return repo.findByOrderByDateAsc();
+    // Date between
+    public List<ExpenseDTO> getExpenseByDateBetween(LocalDate startDate,
+                                                    LocalDate endDate) {
+
+        return expenseMapper.toDTOList(
+                repo.findByDateBetween(startDate, endDate)
+        );
     }
 
-    public Page<Expense>  getExpenses(int page,int size,String sortBy,String direction){
-        Sort sort=direction.equalsIgnoreCase("asc")? Sort.by(sortBy).ascending():Sort.by(sortBy).descending();
-        Pageable pageable= PageRequest.of(page,size,sort);
-        return repo.findAll(pageable);
+    // Title containing
+    public List<ExpenseDTO> getExpenseByTitleContaining(String title) {
+
+        return expenseMapper.toDTOList(
+                repo.findByTitleContaining(title)
+        );
     }
 
+    // Ignore case
+    public List<ExpenseDTO> getExpenseByCategoryIgnoreCase(String category) {
 
+        return expenseMapper.toDTOList(
+                repo.findByCategoryIgnoreCase(category)
+        );
+    }
+
+    // Category and amount
+    public List<ExpenseDTO> getExpenseByCategoryAndAmountGreaterThan(
+            String category,
+            BigDecimal amount) {
+
+        return expenseMapper.toDTOList(
+                repo.findByCategoryAndAmountGreaterThan(category, amount)
+        );
+    }
+
+    // Category or title
+    public List<ExpenseDTO> getExpenseByCategoryOrTitle(
+            String category,
+            String title) {
+
+        return expenseMapper.toDTOList(
+                repo.findByCategoryOrTitle(category, title)
+        );
+    }
+
+    // Sort amount descending
+    public List<ExpenseDTO> getExpenseOrderByAmountDesc() {
+
+        return expenseMapper.toDTOList(
+                repo.findByOrderByAmountDesc()
+        );
+    }
+
+    // Sort date ascending
+    public List<ExpenseDTO> getExpensesOrderByDateAsc() {
+
+        return expenseMapper.toDTOList(
+                repo.findByOrderByDateAsc()
+        );
+    }
+
+    // Pagination and Sorting
+    public Page<ExpenseDTO> getExpenses(int page,
+                                        int size,
+                                        String sortBy,
+                                        String direction) {
+
+        Sort sort = direction.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return repo.findAll(pageable)
+                .map(expenseMapper::toDTO);
+    }
 
 }
