@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,14 +14,21 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
+@Tag(
+        name = "Expense Management",
+        description = "APIs for managing authenticated user's expenses"
+)
 @RestController
 @RequestMapping("/expenses")
 public class ExpenseController {
 
-    @Autowired
-    private ExpenseService service;
 
+    private ExpenseService service;
+    public ExpenseController(ExpenseService service) {
+        this.service = service;
+    }
     @Operation(
             summary = "Get All Expenses",
             description = "Returns a paginated and sorted list of all expenses."

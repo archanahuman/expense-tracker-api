@@ -1,4 +1,4 @@
-package com.learning.ExpenseTracker.model;
+package com.learning.ExpenseTracker.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -7,7 +7,8 @@ import jakarta.persistence.Id;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.JoinColumn;
 @Entity
 public class Expense {
 
@@ -22,7 +23,16 @@ public class Expense {
     private BigDecimal amount;
 
     private LocalDate date;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    public User getUser() {
+        return user;
+    }
 
+    public void setUser(User user) {
+        this.user = user;
+    }
     public Expense() {
     }
 

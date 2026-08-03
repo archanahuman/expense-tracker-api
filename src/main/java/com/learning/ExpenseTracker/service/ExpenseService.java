@@ -3,38 +3,53 @@ package com.learning.ExpenseTracker.service;
 import com.learning.ExpenseTracker.dto.ExpenseDTO;
 import com.learning.ExpenseTracker.exception.ExpenseNotFoundException;
 import com.learning.ExpenseTracker.mapper.ExpenseMapper;
-import com.learning.ExpenseTracker.model.Expense;
+import com.learning.ExpenseTracker.entity.Expense;
 import com.learning.ExpenseTracker.repository.ExpenseRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
-
+import com.learning.ExpenseTracker.entity.User;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-
+import com.learning.ExpenseTracker.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 @Service
 public class ExpenseService {
 
     private static final Logger logger =
             LoggerFactory.getLogger(ExpenseService.class);
 
-    @Autowired
-    private ExpenseRepository repo;
+    private final ExpenseRepository repo;
+    private final ExpenseMapper expenseMapper;
+    private final UserRepository userRepository;
 
-    @Autowired
-    private ExpenseMapper expenseMapper;
+    public ExpenseService(
+            ExpenseRepository repo,
+            ExpenseMapper expenseMapper,
+            UserRepository userRepository) {
 
+        this.repo = repo;
+        this.expenseMapper = expenseMapper;
+        this.userRepository = userRepository;
+    }
+    // Get all expenses
     // Get all expenses
     public List<ExpenseDTO> getExpenses() {
 
-        logger.info("Fetching all expenses.");
+        User currentUser = getCurrentUser();
 
-        List<Expense> expenses = repo.findAll();
+        logger.info("Fetching expenses for user '{}'.",
+                currentUser.getUsername());
 
-        logger.info("Successfully retrieved {} expenses.", expenses.size());
+        List<Expense> expenses = repo.findByUser(currentUser);
+
+        logger.info("Successfully retrieved {} expenses for user '{}'.",
+                expenses.size(),
+                currentUser.getUsername());
 
         return expenseMapper.toDTOList(expenses);
     }
@@ -44,14 +59,17 @@ public class ExpenseService {
 
         logger.info("Fetching expense with ID: {}", id);
 
-        Expense expense = repo.findById(id)
+        User currentUser = getCurrentUser();
+
+        Expense expense = repo.findByIdAndUser(id, currentUser)
                 .orElseThrow(() -> {
-                    logger.error("Expense with ID {} not found.", id);
+                    logger.error("Expense with ID {} not found for current user.", id);
+
                     return new ExpenseNotFoundException(
-                            "Expense with id " + id + " not found");
+                            "Expense not found or does not belong to the current user.");
                 });
 
-        logger.info("Expense with ID {} retrieved successfully.", id);
+        logger.info("Expense retrieved successfully.");
 
         return expenseMapper.toDTO(expense);
     }
@@ -61,11 +79,16 @@ public class ExpenseService {
 
         logger.info("Adding new expense: {}", expenseDTO.getTitle());
 
+        User currentUser = getCurrentUser();
+
         Expense expense = expenseMapper.toEntity(expenseDTO);
+
+        expense.setUser(currentUser);
 
         repo.save(expense);
 
-        logger.info("Expense added successfully.");
+        logger.info("Expense added successfully for user '{}'.",
+                currentUser.getUsername());
     }
 
     // Update expense
@@ -73,9 +96,21 @@ public class ExpenseService {
 
         logger.info("Updating expense with ID: {}", expenseDTO.getId());
 
-        Expense expense = expenseMapper.toEntity(expenseDTO);
+        User currentUser = getCurrentUser();
 
-        repo.save(expense);
+        Expense existingExpense = repo.findByIdAndUser(
+                expenseDTO.getId(),
+                currentUser
+        ).orElseThrow(() ->
+                new ExpenseNotFoundException(
+                        "Expense not found or does not belong to the current user."));
+
+        existingExpense.setTitle(expenseDTO.getTitle());
+        existingExpense.setCategory(expenseDTO.getCategory());
+        existingExpense.setAmount(expenseDTO.getAmount());
+        existingExpense.setDate(expenseDTO.getDate());
+
+        repo.save(existingExpense);
 
         logger.info("Expense updated successfully.");
     }
@@ -85,7 +120,14 @@ public class ExpenseService {
 
         logger.info("Deleting expense with ID: {}", id);
 
-        repo.deleteById(id);
+        User currentUser = getCurrentUser();
+
+        Expense expense = repo.findByIdAndUser(id, currentUser)
+                .orElseThrow(() ->
+                        new ExpenseNotFoundException(
+                                "Expense not found or does not belong to the current user."));
+
+        repo.delete(expense);
 
         logger.info("Expense deleted successfully.");
     }
@@ -242,6 +284,8 @@ public class ExpenseService {
     }
 
     // Pagination and Sorting
+// Pagination and Sorting
+    // Pagination and Sorting
     public Page<ExpenseDTO> getExpenses(int page,
                                         int size,
                                         String sortBy,
@@ -254,6 +298,8 @@ public class ExpenseService {
                 sortBy,
                 direction);
 
+        User currentUser = getCurrentUser();
+
         Sort sort = direction.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
@@ -261,15 +307,25 @@ public class ExpenseService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<ExpenseDTO> expensePage =
-                repo.findAll(pageable)
+                repo.findByUser(currentUser, pageable)
                         .map(expenseMapper::toDTO);
 
         logger.info(
-                "Successfully retrieved {} expenses on page {}.",
+                "Successfully retrieved {} expenses for user '{}'.",
                 expensePage.getNumberOfElements(),
-                page);
+                currentUser.getUsername());
 
         return expensePage;
     }
+    private User getCurrentUser() {
 
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        String username = authentication.getName();
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found."));
+    }
 }

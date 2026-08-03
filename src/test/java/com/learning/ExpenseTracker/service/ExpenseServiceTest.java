@@ -7,7 +7,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.learning.ExpenseTracker.dto.ExpenseDTO;
-import com.learning.ExpenseTracker.model.Expense;
+import com.learning.ExpenseTracker.entity.Expense;
 import com.learning.ExpenseTracker.exception.ExpenseNotFoundException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;

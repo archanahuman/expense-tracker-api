@@ -1,7 +1,7 @@
 package com.learning.ExpenseTracker.mapper;
 
 import com.learning.ExpenseTracker.dto.ExpenseDTO;
-import com.learning.ExpenseTracker.model.Expense;
+import com.learning.ExpenseTracker.entity.Expense;
 import org.mapstruct.Mapper;
 
 import java.util.List;
