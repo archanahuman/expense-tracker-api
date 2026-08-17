@@ -1,5 +1,5 @@
 package com.learning.ExpenseTracker.controller;
-
+import com.learning.ExpenseTracker.dto.ExpenseSummaryDTO;
 import com.learning.ExpenseTracker.dto.ExpenseDTO;
 import com.learning.ExpenseTracker.service.ExpenseService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,6 +47,7 @@ public class ExpenseController {
                 service.getExpenses(page, size, sortBy, direction),
                 HttpStatus.OK);
     }
+
 
     @Operation(
             summary = "Get Expense By ID",
@@ -101,6 +102,14 @@ public class ExpenseController {
         return new ResponseEntity<>(
                 "Expense updated successfully",
                 HttpStatus.OK);
+    }
+    @GetMapping("/summary")
+    public ResponseEntity<ExpenseSummaryDTO> getExpenseSummary() {
+
+        return new ResponseEntity<>(
+                service.getExpenseSummary(),
+                HttpStatus.OK
+        );
     }
 
     @Operation(

@@ -1,6 +1,7 @@
 package com.learning.ExpenseTracker.service;
 
 import com.learning.ExpenseTracker.dto.ExpenseDTO;
+import com.learning.ExpenseTracker.dto.ExpenseSummaryDTO;
 import com.learning.ExpenseTracker.exception.ExpenseNotFoundException;
 import com.learning.ExpenseTracker.mapper.ExpenseMapper;
 import com.learning.ExpenseTracker.entity.Expense;
@@ -17,6 +18,13 @@ import java.util.List;
 import com.learning.ExpenseTracker.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.Year;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import org.springframework.data.domain.Pageable;
 @Service
 public class ExpenseService {
 
@@ -57,19 +65,29 @@ public class ExpenseService {
     // Get expense by id
     public ExpenseDTO getExpenseById(int id) {
 
-        logger.info("Fetching expense with ID: {}", id);
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
 
-        User currentUser = getCurrentUser();
+        String username = authentication.getName();
 
-        Expense expense = repo.findByIdAndUser(id, currentUser)
-                .orElseThrow(() -> {
-                    logger.error("Expense with ID {} not found for current user.", id);
+        logger.info(
+                "Fetching expense with ID {} for user '{}'.",
+                id,
+                username
+        );
 
-                    return new ExpenseNotFoundException(
-                            "Expense not found or does not belong to the current user.");
-                });
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found.")
+                );
 
-        logger.info("Expense retrieved successfully.");
+        Expense expense =
+                repo.findByIdAndUser(id, user)
+                        .orElseThrow(() ->
+                                new ExpenseNotFoundException(
+                                        "Expense not found."
+                                )
+                        );
 
         return expenseMapper.toDTO(expense);
     }
@@ -94,42 +112,80 @@ public class ExpenseService {
     // Update expense
     public void updateExpense(ExpenseDTO expenseDTO) {
 
-        logger.info("Updating expense with ID: {}", expenseDTO.getId());
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
 
-        User currentUser = getCurrentUser();
+        String username = authentication.getName();
 
-        Expense existingExpense = repo.findByIdAndUser(
+        logger.info(
+                "Updating expense with ID {} for user '{}'.",
                 expenseDTO.getId(),
-                currentUser
-        ).orElseThrow(() ->
-                new ExpenseNotFoundException(
-                        "Expense not found or does not belong to the current user."));
+                username
+        );
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new RuntimeException("User not found.")
+                );
+
+        Expense existingExpense =
+                repo.findByIdAndUser(
+                        expenseDTO.getId(),
+                        user
+                ).orElseThrow(() ->
+                        new ExpenseNotFoundException(
+                                "Expense not found."
+                        )
+                );
 
         existingExpense.setTitle(expenseDTO.getTitle());
-        existingExpense.setCategory(expenseDTO.getCategory());
+        existingExpense.setCategory(expenseDTO.getCategory().trim().toUpperCase());
         existingExpense.setAmount(expenseDTO.getAmount());
         existingExpense.setDate(expenseDTO.getDate());
 
         repo.save(existingExpense);
 
-        logger.info("Expense updated successfully.");
+        logger.info(
+                "Expense with ID {} updated successfully for user '{}'.",
+                expenseDTO.getId(),
+                username
+        );
     }
 
     // Delete expense
     public void deleteExpense(int id) {
 
-        logger.info("Deleting expense with ID: {}", id);
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
 
-        User currentUser = getCurrentUser();
+        String username = authentication.getName();
 
-        Expense expense = repo.findByIdAndUser(id, currentUser)
+        logger.info(
+                "Deleting expense with ID {} for user '{}'.",
+                id,
+                username
+        );
+
+        User user = userRepository.findByUsername(username)
                 .orElseThrow(() ->
-                        new ExpenseNotFoundException(
-                                "Expense not found or does not belong to the current user."));
+                        new RuntimeException("User not found.")
+                );
+
+        Expense expense =
+                repo.findByIdAndUser(id, user)
+                        .orElseThrow(() ->
+                                new ExpenseNotFoundException(
+                                        "Expense not found."
+                                )
+                        );
 
         repo.delete(expense);
 
-        logger.info("Expense deleted successfully.");
+        logger.info(
+                "Expense with ID {} deleted successfully for user '{}'.",
+                id,
+                username
+        );
     }
 
     // Find by category
@@ -327,5 +383,115 @@ public class ExpenseService {
         return userRepository.findByUsername(username)
                 .orElseThrow(() ->
                         new RuntimeException("User not found."));
+    }
+    public ExpenseSummaryDTO getExpenseSummary() {
+
+        logger.info("Calculating expense summary");
+
+        User currentUser = getCurrentUser();
+
+        /*
+         * Fetch ALL expenses for the current user.
+         *
+         * Pageable.unpaged() is used because dashboard analytics
+         * must not depend on the current pagination page.
+         */
+        Page<ExpenseDTO> page =
+                repo.findByUser(currentUser, Pageable.unpaged())
+                        .map(expenseMapper::toDTO);
+
+        var expenses = page.getContent();
+
+        BigDecimal totalSpending = expenses.stream()
+                .map(ExpenseDTO::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        LocalDate today = LocalDate.now();
+
+        BigDecimal thisMonth = expenses.stream()
+                .filter(expense ->
+                        expense.getDate() != null
+                                && expense.getDate().getYear() == today.getYear()
+                                && expense.getDate().getMonth() == today.getMonth())
+                .map(ExpenseDTO::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long transactionCount = expenses.size();
+
+        /*
+         * Category breakdown
+         *
+         * FOOD, food and Food are treated as FOOD.
+         */
+        Map<String, BigDecimal> categoryBreakdown = new LinkedHashMap<>();
+
+        for (ExpenseDTO expense : expenses) {
+
+            String category = expense.getCategory() == null
+                    ? "OTHER"
+                    : expense.getCategory().trim().toUpperCase();
+
+            categoryBreakdown.merge(
+                    category,
+                    expense.getAmount(),
+                    BigDecimal::add
+            );
+        }
+
+        /*
+         * Monthly spending for the current year.
+         */
+        Map<String, BigDecimal> monthlySpending = new LinkedHashMap<>();
+
+        for (Month month : Month.values()) {
+            monthlySpending.put(
+                    month.name().substring(0, 1)
+                            + month.name().substring(1).toLowerCase(),
+                    BigDecimal.ZERO
+            );
+        }
+
+        for (ExpenseDTO expense : expenses) {
+
+            if (expense.getDate() == null) {
+                continue;
+            }
+
+            if (expense.getDate().getYear() != today.getYear()) {
+                continue;
+            }
+
+            String monthName =
+                    expense.getDate()
+                            .getMonth()
+                            .name()
+                            .substring(0, 1)
+                            + expense.getDate()
+                            .getMonth()
+                            .name()
+                            .substring(1)
+                            .toLowerCase();
+
+            monthlySpending.merge(
+                    monthName,
+                    expense.getAmount(),
+                    BigDecimal::add
+            );
+        }
+
+        logger.info(
+                "Expense summary calculated for user '{}'. Total={}, Transactions={}",
+                currentUser.getUsername(),
+                totalSpending,
+                transactionCount
+        );
+
+        return new ExpenseSummaryDTO(
+                totalSpending,
+                thisMonth,
+                transactionCount,
+                categoryBreakdown,
+                monthlySpending
+        );
     }
 }
